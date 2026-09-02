@@ -287,35 +287,18 @@ async function handleSubmit(formId) {
     return;
   }
 
-  // フィールドの値を構築（空なら保存済みの名前を使う）
   const entries = form.entries.map(e => ({
     entryId: e.entryId,
     value: e.value || userName
   }));
 
-  // ボタンの状態を変更
-  const card = document.querySelector(`.tt-card[data-id="${formId}"]`);
-  const submitBtn = card ? card.querySelector('.tt-btn[title="ワンクリック提出"]') : null;
-  if (submitBtn) {
-    submitBtn.textContent = '⏳';
-    submitBtn.disabled = true;
-  }
+  const url = buildPrefilledUrl(form.formUrl, entries, userEmail) + '&autoSubmit=true';
+  window.open(url, '_blank');
 
-  const success = await submitFormDirect(form.formUrl, entries, userEmail);
-
-  if (success) {
-    addHistory(formId, form.label);
-    showToast(`✅ 「${form.label}」を提出しました！`, 'success');
-    renderTimetable();
-  } else {
-    showToast('送信に失敗しました。「入力済みで開く」をお試しください', 'error');
-    if (submitBtn) {
-      submitBtn.textContent = '🚀';
-      submitBtn.disabled = false;
-    }
-  }
+  addHistory(formId, form.label);
+  showToast(`✅ 「${form.label}」の自動送信を開始しました！`, 'success');
+  renderTimetable();
 }
-
 /**
  * 事前入力済みURLで新しいタブを開く（フォールバック）
  */
