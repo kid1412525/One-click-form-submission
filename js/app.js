@@ -144,10 +144,8 @@ function handleSaveSettings() {
 /** 保存済みの名前とメールを読み込む */
 function initName() {
   const name = getName();
-  const email = getEmail();
   document.getElementById('input-name').value = name;
-  document.getElementById('input-email').value = email;
-  if (name || email) {
+  if (name) {
     document.getElementById('name-status').textContent = '✅ 保存済み';
   }
 }
@@ -155,14 +153,11 @@ function initName() {
 /** 名前とメールを保存 */
 function handleSaveName() {
   const name = document.getElementById('input-name').value.trim();
-  const email = document.getElementById('input-email').value.trim();
-
-  if (!name) {
+    if (!name) {
     showToast('名前を入力してください', 'error');
     return;
   }
   saveName(name);
-  saveEmail(email);
   document.getElementById('name-status').textContent = '✅ 保存済み';
   showToast('情報を保存しました', 'success');
 }
@@ -261,7 +256,7 @@ function renderFormCardSmall(form, history, isOther = false) {
     <div class="tt-card fade-in" data-id="${form.id}" style="${style}">
       <div class="tt-card-title">${escapeHtml(form.label)}</div>
       <div class="tt-actions">
-        <button class="tt-btn" title="ワンクリック提出" onclick="handleSubmit('${form.id}')">🚀</button>
+        
         <button class="tt-btn" title="入力済みで開く" onclick="handleOpenPrefilled('${form.id}')">📝</button>
         <button class="tt-btn" title="編集" onclick="handleEditForm('${form.id}')">⚙️</button>
         <button class="tt-btn" title="削除" onclick="handleDeleteForm('${form.id}')" style="color: var(--error)">🗑️</button>
@@ -281,7 +276,6 @@ async function handleSubmit(formId) {
   if (!form) return;
 
   const userName = getName();
-  const userEmail = getEmail();
   if (!userName) {
     showToast('先に名前を保存してください', 'error');
     return;
@@ -292,7 +286,7 @@ async function handleSubmit(formId) {
     value: e.value || userName
   }));
 
-  const url = buildPrefilledUrl(form.formUrl, entries, userEmail) + '&autoSubmit=true';
+  const url = buildPrefilledUrl(form.formUrl, entries) + '&autoSubmit=true';
   window.open(url, '_blank');
 
   addHistory(formId, form.label);
@@ -307,7 +301,6 @@ function handleOpenPrefilled(formId) {
   if (!form) return;
 
   const userName = getName();
-  const userEmail = getEmail();
   if (!userName) {
     showToast('先に名前を保存してください', 'error');
     return;
@@ -318,7 +311,7 @@ function handleOpenPrefilled(formId) {
     value: e.value || userName
   }));
 
-  const url = buildPrefilledUrl(form.formUrl, entries, userEmail);
+  const url = buildPrefilledUrl(form.formUrl, entries);
   window.open(url, '_blank');
 
   // 履歴に記録（実際にはユーザーが送信ボタンを押すまで未提出だが便宜上記録）
