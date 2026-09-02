@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📝 フォーム クイック提出</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- ヘッダー -->
+    <header>
+      <h1>📝 フォーム クイック提出</h1>
+      <button id="theme-toggle" aria-label="テーマ切替">🌙</button>
+    </header>
+
+    <!-- 名前・メール入力セクション -->
+    <div class="section">
+      <div class="section-title">あなたの情報</div>
+      <div class="name-card">
+        <div class="info-row">
+          <label for="input-name">名前</label>
+          <div class="info-input-group">
+            <input type="text" id="input-name" placeholder="例: 山田太郎">
+          </div>
+        </div>
+        <div class="info-row">
+          <label for="input-email">メール</label>
+          <div class="info-input-group">
+            <input type="email" id="input-email" placeholder="例: name@school.ed.jp">
+          </div>
+        </div>
+        <div class="info-actions">
+          <button class="btn btn-primary" id="btn-save-name">保存</button>
+          <span id="name-status"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 登録済みフォーム（時間割） -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">時間割</div>
+        <div class="header-actions">
+          <button class="btn btn-outline" id="btn-toggle-settings">⚙️ 設定</button>
+          <button class="btn btn-outline" id="btn-toggle-editor">＋ 授業を追加</button>
+        </div>
+      </div>
+
+      <!-- 設定パネル -->
+      <div class="settings-panel" id="settings-panel" style="display: none;">
+        <div class="settings-title">表示する曜日</div>
+        <div class="settings-days">
+          <label><input type="checkbox" value="mon" class="chk-day"> 月</label>
+          <label><input type="checkbox" value="tue" class="chk-day"> 火</label>
+          <label><input type="checkbox" value="wed" class="chk-day"> 水</label>
+          <label><input type="checkbox" value="thu" class="chk-day"> 木</label>
+          <label><input type="checkbox" value="fri" class="chk-day"> 金</label>
+          <label><input type="checkbox" value="sat" class="chk-day"> 土</label>
+          <label><input type="checkbox" value="sun" class="chk-day"> 日</label>
+        </div>
+        
+        <div class="settings-title" style="margin-top: 16px;">時限の開始・終了時間</div>
+        <div class="settings-period-times" id="settings-period-times">
+          <!-- JSで動的に生成 -->
+        </div>
+        
+        <button class="btn btn-primary" id="btn-save-settings" style="margin-top: 16px;">✅ 設定を保存して反映</button>
+      </div>
+
+      <div class="timetable-wrapper">
+        <table class="timetable" id="timetable">
+          <!-- JSで動的に構築される -->
+        </table>
+      </div>
+
+      <div class="other-forms" id="other-forms-container">
+        <div class="other-forms-title">その他の授業（曜日・時限指定なし）</div>
+        <div id="other-forms-list">
+          <!-- 動的挿入 -->
+        </div>
+      </div>
+    </div>
+
+    <!-- フォーム追加/編集エリア（初期は非表示） -->
+    <div class="form-editor" id="form-editor">
+      <div class="editor-title">📋 授業の登録</div>
+
+      <!-- 簡単設定: ブックマークレット方式 -->
+      <div class="auto-setup">
+        <div class="auto-setup-header">⚡ かんたん設定（URLを貼るだけ）</div>
+
+        <!-- ステップ1: ブックマークレット -->
+        <div class="setup-step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <p class="step-title">下のボタンをブックマークバーにドラッグ＆ドロップ</p>
+            <p class="step-hint">（初回だけ。一度追加すればずっと使えます）</p>
+            <a href="javascript:void(function(){try{var d=document.querySelector('script');var s=document.documentElement.innerHTML;var m=s.match(/FB_PUBLIC_LOAD_DATA_\s*=\s*([\s\S]*?);\s*<\/script>/);if(!m){alert('Googleフォームのページで実行してください');return}var data=JSON.parse(m[1]);var title=(data[1]&&data[1][8])||'';var fields=data[1]&&data[1][1];if(!fields){alert('フィールドが見つかりません');return}var t={0:'短文',1:'長文',2:'ラジオ',3:'プルダウン',4:'チェック',5:'スケール',9:'日付',10:'時刻'};var entries=[];fields.forEach(function(f){if(f&&f[4]){f[4].forEach(function(sub){if(sub&&sub[0]!==undefined){entries.push({entryId:'entry.'+sub[0],fieldName:f[1]||'',fieldType:t[f[3]]||''})}});}});var result=JSON.stringify({title:title,url:location.href,entries:entries});navigator.clipboard.writeText(result).then(function(){alert('✅ '+entries.length+'個のフィールドをコピーしました！\nツールに貼り付けてください')}).catch(function(){prompt('以下をコピーしてツールに貼り付けてください:',result)})}catch(e){alert('エラー: '+e.message)}})()" class="bookmarklet-link" onclick="event.preventDefault();alert('このボタンはブックマークバーにドラッグしてください！\n（クリックではなくドラッグ＆ドロップ）')">📋 フォーム情報を取得</a>
+          </div>
+        </div>
+
+        <!-- ステップ2: フォームで実行 -->
+        <div class="setup-step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <p class="step-title">学校アカウントでGoogleフォームを開き、ブックマークをクリック</p>
+          </div>
+        </div>
+
+        <!-- ステップ3: 貼り付け -->
+        <div class="setup-step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <p class="step-title">コピーされたデータをここに貼り付け</p>
+            <div class="auto-setup-input">
+              <input type="text" id="input-bookmark-data" placeholder="ブックマークレットでコピーしたデータを貼り付け">
+              <button class="btn btn-primary" id="btn-apply-bookmark">適用</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="auto-parse-status" class="auto-parse-status"></div>
+
+        <!-- URL直接入力（フォールバック） -->
+        <details class="url-fallback">
+          <summary>公開フォームの場合: URLから自動取得</summary>
+          <div class="auto-setup-input" style="margin-top: 8px;">
+            <input type="url" id="input-auto-url" placeholder="GoogleフォームのURLを貼り付け">
+            <button class="btn btn-primary" id="btn-auto-fetch">🔍 自動取得</button>
+          </div>
+        </details>
+      </div>
+
+      <div class="editor-divider">
+        <span>または手動で入力</span>
+      </div>
+
+      <div class="editor-row">
+        <div class="editor-group half">
+          <label for="select-day">曜日</label>
+          <select id="select-day">
+            <option value="mon">月曜日</option>
+            <option value="tue">火曜日</option>
+            <option value="wed">水曜日</option>
+            <option value="thu">木曜日</option>
+            <option value="fri">金曜日</option>
+            <option value="sat">土曜日</option>
+            <option value="sun">日曜日</option>
+            <option value="other" selected>その他 / 指定なし</option>
+          </select>
+        </div>
+        <div class="editor-group half">
+          <label>時限 (例: 1限〜2限)</label>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <select id="select-start-period" style="flex: 1;">
+              <option value="0" selected>指定なし</option>
+              <option value="1">1限</option>
+              <option value="2">2限</option>
+              <option value="3">3限</option>
+              <option value="4">4限</option>
+              <option value="5">5限</option>
+              <option value="6">6限</option>
+            </select>
+            <span>〜</span>
+            <select id="select-end-period" style="flex: 1;">
+              <option value="0" selected>指定なし</option>
+              <option value="1">1限</option>
+              <option value="2">2限</option>
+              <option value="3">3限</option>
+              <option value="4">4限</option>
+              <option value="5">5限</option>
+              <option value="6">6限</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="editor-group">
+        <label for="input-form-label">ラベル（授業名など）</label>
+        <input type="text" id="input-form-label" placeholder="例: 数学I">
+      </div>
+
+      <div class="editor-group">
+        <label for="input-form-url">GoogleフォームURL</label>
+        <input type="url" id="input-form-url" placeholder="https://docs.google.com/forms/d/e/...">
+      </div>
+
+      <div class="editor-group">
+        <div class="fields-header">
+          <span>フィールド設定</span>
+          <button class="btn-add-field" id="btn-add-field">＋ 追加</button>
+        </div>
+        <div id="field-rows">
+          <!-- フィールド入力行がここに動的に追加される -->
+        </div>
+      </div>
+
+      <div class="editor-actions">
+        <button class="btn btn-primary" id="btn-register-form">📌 登録</button>
+        <button class="btn btn-secondary" id="btn-cancel-form">キャンセル</button>
+      </div>
+    </div>
+
+    <!-- 提出履歴 -->
+    <div class="section" style="margin-top: 24px;">
+      <button class="btn btn-secondary btn-full" id="btn-toggle-history">📊 提出履歴を表示</button>
+      <div class="collapsible-section" id="history-section">
+        <div id="history-list"></div>
+        <button class="btn btn-secondary btn-full" id="btn-clear-history" style="margin-top: 12px;">🗑️ 履歴をクリア</button>
+      </div>
+    </div>
+
+    <!-- ヘルプ -->
+    <div class="section" style="margin-top: 12px;">
+      <button class="btn btn-secondary btn-full" id="btn-toggle-help">❓ フィールドIDの調べ方</button>
+      <div class="collapsible-section" id="help-section">
+        <div class="help-content">
+          <h3>方法1: フォームの事前入力URLを使う（簡単）</h3>
+          <ol>
+            <li>Googleフォームの編集画面を開く</li>
+            <li>右上の「⋮」メニュー → 「事前入力されたリンクを取得」</li>
+            <li>各フィールドにダミー値を入力して「リンクを取得」</li>
+            <li>URLの中の <code>entry.123456789=ダミー値</code> の部分がフィールドIDです</li>
+          </ol>
+
+          <h3>方法2: ブラウザの開発者ツールを使う</h3>
+          <ol>
+            <li>Googleフォームの回答ページを開く</li>
+            <li><code>F12</code> キーで開発者ツールを開く</li>
+            <li>入力フィールドを右クリック → 「検証」</li>
+            <li><code>name="entry.123456789"</code> の値がフィールドIDです</li>
+          </ol>
+
+          <h3>フィールド値について</h3>
+          <p>「値」を空欄にすると、上で保存した「名前」が自動で使われます。<br>
+          名前以外の固定値を入力したい場合は「値」に直接入力してください。</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- トースト通知 -->
+  <div id="toast" class="toast"></div>
+
+  <!-- スクリプト -->
+  <script src="js/storage.js"></script>
+  <script src="js/form-helper.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
