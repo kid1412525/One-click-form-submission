@@ -15,22 +15,7 @@
       <button id="theme-toggle" aria-label="テーマ切替">🌙</button>
     </header>
 
-    <!-- 名前・メール入力セクション -->
-    <div class="section">
-      <div class="section-title">あなたの情報</div>
-      <div class="name-card">
-        <div class="info-row">
-          <label for="input-name">名前</label>
-          <div class="info-input-group">
-            <input type="text" id="input-name" placeholder="例: 山田太郎">
-          </div>
-        </div>
-        <div class="info-row">
-          <label for="input-email">メール</label>
-          <div class="info-input-group">
-            <input type="email" id="input-email" placeholder="例: name@school.ed.jp">
-          </div>
-        </div>
+    
         <div class="info-actions">
           <button class="btn btn-primary" id="btn-save-name">保存</button>
           <span id="name-status"></span>
@@ -200,6 +185,24 @@
       <div class="editor-actions">
         <button class="btn btn-primary" id="btn-register-form">📌 登録</button>
         <button class="btn btn-secondary" id="btn-cancel-form">キャンセル</button>
+      </div>
+    </div>
+
+    
+    <!-- 名前入力セクション -->
+    <div class="section" style="margin-top: 24px;">
+      <div class="section-title">あなたの情報</div>
+      <div class="name-card">
+        <div class="info-row">
+          <label for="input-name">名前</label>
+          <div class="info-input-group">
+            <input type="text" id="input-name" placeholder="例: 山田太郎">
+          </div>
+        </div>
+        <div class="info-actions">
+          <button class="btn btn-primary" id="btn-save-name">保存</button>
+          <span id="name-status"></span>
+        </div>
       </div>
     </div>
 
