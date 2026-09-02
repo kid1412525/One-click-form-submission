@@ -9,8 +9,7 @@ let editingFormId = null; // 編集中のフォームID（nullなら新規追加
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   initName();
-  initSettings();
-  renderTimetable();
+  renderFormList();
   setupEventListeners();
 });
 
@@ -22,23 +21,8 @@ function setupEventListeners() {
     if (e.key === 'Enter') handleSaveName();
   });
 
-  // 設定パネルのトグル
-  const btnToggleSettings = document.getElementById('btn-toggle-settings');
-  if (btnToggleSettings) {
-    btnToggleSettings.addEventListener('click', () => {
-      const panel = document.getElementById('settings-panel');
-      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-    });
-  }
-
-  // 設定の保存
-  const btnSaveSettings = document.getElementById('btn-save-settings');
-  if (btnSaveSettings) {
-    btnSaveSettings.addEventListener('click', handleSaveSettings);
-  }
-
   // フォーム追加ボタン
-  document.getElementById('btn-toggle-editor').addEventListener('click', () => {
+  document.getElementById('btn-show-add-form').addEventListener('click', () => {
     editingFormId = null;
     resetFormEditor();
     toggleFormEditor(true);
@@ -54,19 +38,6 @@ function setupEventListeners() {
 
   // フィールド追加ボタン
   document.getElementById('btn-add-field').addEventListener('click', addFieldRow);
-
-  // URL自動取得ボタン
-  document.getElementById('btn-auto-fetch').addEventListener('click', handleAutoFetch);
-  // 貼り付け時にも自動検出
-  document.getElementById('input-auto-url').addEventListener('paste', () => {
-    setTimeout(handleAutoFetch, 100);
-  });
-
-  // ブックマークレットデータの適用
-  document.getElementById('btn-apply-bookmark').addEventListener('click', handleApplyBookmarkData);
-  document.getElementById('input-bookmark-data').addEventListener('paste', () => {
-    setTimeout(handleApplyBookmarkData, 100);
-  });
 
   // テーマ切替
   document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
@@ -87,182 +58,74 @@ function setupEventListeners() {
   document.getElementById('btn-toggle-help').addEventListener('click', toggleHelp);
 }
 
-// ── 設定の管理 ──
-function initSettings() {
-  const settings = getSettings();
-  
-  // 曜日のチェックボックス
-  document.querySelectorAll('.chk-day').forEach(chk => {
-    chk.checked = settings.visibleDays.includes(chk.value);
-  });
-  
-  // 時限の開始・終了時間
-  const timeContainer = document.getElementById('settings-period-times');
-  if (timeContainer) {
-    let timeHtml = '';
-    for (let i = 1; i <= 6; i++) {
-      const times = settings.periodTimes[i] || { start: '', end: '' };
-      timeHtml += `
-        <div class="period-time-row">
-          <span style="font-weight: 600; width: 40px;">${i}限:</span>
-          <input type="time" id="time-start-${i}" value="${times.start}">
-          <span>〜</span>
-          <input type="time" id="time-end-${i}" value="${times.end}">
-        </div>
-      `;
-    }
-    timeContainer.innerHTML = timeHtml;
-  }
-}
-
-function handleSaveSettings() {
-  const visibleDays = [];
-  document.querySelectorAll('.chk-day:checked').forEach(chk => {
-    visibleDays.push(chk.value);
-  });
-  
-  const periodTimes = {};
-  for (let i = 1; i <= 6; i++) {
-    periodTimes[i] = {
-      start: document.getElementById(`time-start-${i}`).value,
-      end: document.getElementById(`time-end-${i}`).value
-    };
-  }
-  
-  saveSettings({ visibleDays, periodTimes });
-  document.getElementById('settings-panel').style.display = 'none';
-  
-  // CSS変数に行数をセット
-  document.documentElement.style.setProperty('--days-count', visibleDays.length || 1);
-  
-  renderTimetable();
-  showToast('設定を保存しました', 'success');
-}
-
 // ── 名前の管理 ──
 
-/** 保存済みの名前とメールを読み込む */
+/** 保存済みの名前を読み込む */
 function initName() {
   const name = getName();
-  document.getElementById('input-name').value = name;
+  const input = document.getElementById('input-name');
+  input.value = name;
   if (name) {
     document.getElementById('name-status').textContent = '✅ 保存済み';
   }
 }
 
-/** 名前とメールを保存 */
+/** 名前を保存 */
 function handleSaveName() {
-  const name = document.getElementById('input-name').value.trim();
-    if (!name) {
+  const input = document.getElementById('input-name');
+  const name = input.value.trim();
+  if (!name) {
     showToast('名前を入力してください', 'error');
     return;
   }
   saveName(name);
   document.getElementById('name-status').textContent = '✅ 保存済み';
-  showToast('情報を保存しました', 'success');
+  showToast('名前を保存しました', 'success');
 }
 
-// ── 時間割の描画 ──
+// ── フォーム一覧の描画 ──
 
-const DAY_MAP = { mon: '月', tue: '火', wed: '水', thu: '木', fri: '金', sat: '土', sun: '日' };
-
-function renderTimetable() {
+/** 登録済みフォーム一覧を描画 */
+function renderFormList() {
   const forms = getForms();
+  const container = document.getElementById('form-list');
   const history = getHistory();
-  const settings = getSettings();
-  const visibleDays = settings.visibleDays || ['mon', 'tue', 'wed', 'thu', 'fri'];
-  
-  document.documentElement.style.setProperty('--days-count', visibleDays.length || 1);
-  
-  const maxPeriod = 6;
-  const matrix = Array.from({ length: maxPeriod + 1 }, () => ({}));
-  const otherForms = [];
-  
-  forms.forEach(form => {
-    if (!form.dayOfWeek || form.dayOfWeek === 'other' || !visibleDays.includes(form.dayOfWeek)) {
-      otherForms.push(form);
-      return;
-    }
-    
-    // startPeriodとendPeriodをサポート。古いperiodプロパティにもフォールバック
-    const start = parseInt(form.startPeriod || form.period || 0, 10);
-    let end = parseInt(form.endPeriod || form.period || 0, 10);
-    
-    if (start === 0 || start > maxPeriod) {
-      otherForms.push(form);
-      return;
-    }
-    
-    if (end < start) end = start;
-    if (end > maxPeriod) end = maxPeriod;
-    
-    if (!matrix[start][form.dayOfWeek]) {
-       matrix[start][form.dayOfWeek] = [];
-    }
-    matrix[start][form.dayOfWeek].push({ form, rowSpan: end - start + 1 });
-    
-    for (let p = start + 1; p <= end; p++) {
-       matrix[p][form.dayOfWeek] = 'spanned';
-    }
-  });
 
-  // 時間割テーブルの構築
-  const table = document.getElementById('timetable');
-  let html = '<thead><tr><th class="period-col"></th>';
-  visibleDays.forEach(day => {
-    html += `<th>${DAY_MAP[day]}</th>`;
-  });
-  html += '</tr></thead><tbody>';
-  
-  for (let p = 1; p <= maxPeriod; p++) {
-    const timeInfo = settings.periodTimes[p] || { start: '', end: '' };
-    html += `<tr>`;
-    html += `<th class="period-col">${p}限<br><span style="font-size: 0.7rem; color: var(--text-secondary); font-weight: normal; display: block; margin-top: 4px;">${timeInfo.start}<br>〜<br>${timeInfo.end}</span></th>`;
-    
-    visibleDays.forEach(day => {
-      const cell = matrix[p][day];
-      if (cell === 'spanned') {
-        // 何も描画しない（rowspanで埋まっているため）
-      } else if (Array.isArray(cell) && cell.length > 0) {
-        const item = cell[0]; // 複数あっても最初のみ表示
-        const form = item.form;
-        html += `<td rowspan="${item.rowSpan}">`;
-        html += renderFormCardSmall(form, history);
-        html += `</td>`;
-      } else {
-        html += `<td></td>`;
-      }
-    });
-    html += `</tr>`;
-  }
-  html += '</tbody>';
-  table.innerHTML = html;
-  
-  // その他の授業
-  const otherContainer = document.getElementById('other-forms-list');
-  if (otherForms.length === 0) {
-    otherContainer.innerHTML = '<p class="empty-hint" style="text-align: left;">登録されていません</p>';
-  } else {
-    otherContainer.innerHTML = otherForms.map(f => renderFormCardSmall(f, history, true)).join('');
-  }
-}
-
-/** 時間割用の小さなカードを描画 */
-function renderFormCardSmall(form, history, isOther = false) {
-  const lastSubmit = history.find(h => h.formId === form.id);
-  const style = isOther ? 'margin-bottom: 8px;' : '';
-  
-  return `
-    <div class="tt-card fade-in" data-id="${form.id}" style="${style}">
-      <div class="tt-card-title">${escapeHtml(form.label)}</div>
-      <div class="tt-actions">
-        
-        <button class="tt-btn" title="入力済みで開く" onclick="handleOpenPrefilled('${form.id}')">📝</button>
-        <button class="tt-btn" title="編集" onclick="handleEditForm('${form.id}')">⚙️</button>
-        <button class="tt-btn" title="削除" onclick="handleDeleteForm('${form.id}')" style="color: var(--error)">🗑️</button>
+  if (forms.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <p>📋 フォームが登録されていません</p>
+        <p class="empty-hint">下の「＋ 新しいフォームを追加」ボタンから登録してください</p>
       </div>
-    </div>
-  `;
+    `;
+    return;
+  }
+
+  container.innerHTML = forms.map(form => {
+    // このフォームの最新提出履歴を取得
+    const lastSubmit = history.find(h => h.formId === form.id);
+    const lastSubmitText = lastSubmit
+      ? formatDate(lastSubmit.submittedAt)
+      : 'まだ提出していません';
+
+    return `
+      <div class="form-card fade-in" data-id="${form.id}">
+        <div class="form-card-header">
+          <span class="form-label">📚 ${escapeHtml(form.label)}</span>
+          <span class="form-last-submit">最終提出: ${lastSubmitText}</span>
+        </div>
+        <div class="form-card-fields">
+          ${form.entries.map(e => `<span class="field-badge">${escapeHtml(e.fieldName)}: ${escapeHtml(e.value || getName())}</span>`).join('')}
+        </div>
+        <div class="form-card-actions">
+          <button class="btn-submit" onclick="handleSubmit('${form.id}')">🚀 ワンクリック提出</button>
+          <button class="btn-prefill" onclick="handleOpenPrefilled('${form.id}')">📝 入力済みで開く</button>
+          <button class="btn-edit" onclick="handleEditForm('${form.id}')">⚙️ 編集</button>
+          <button class="btn-delete" onclick="handleDeleteForm('${form.id}')">🗑️</button>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 // ── フォームの提出 ──
@@ -281,18 +144,35 @@ async function handleSubmit(formId) {
     return;
   }
 
+  // フィールドの値を構築（空なら保存済みの名前を使う）
   const entries = form.entries.map(e => ({
     entryId: e.entryId,
     value: e.value || userName
   }));
 
-  const url = buildPrefilledUrl(form.formUrl, entries) + '&autoSubmit=true';
-  window.open(url, '_blank');
+  // ボタンの状態を変更
+  const card = document.querySelector(`.form-card[data-id="${formId}"]`);
+  const submitBtn = card ? card.querySelector('.btn-submit') : null;
+  if (submitBtn) {
+    submitBtn.textContent = '⏳ 送信中...';
+    submitBtn.disabled = true;
+  }
 
-  addHistory(formId, form.label);
-  showToast(`✅ 「${form.label}」の自動送信を開始しました！`, 'success');
-  renderTimetable();
+  const success = await submitFormDirect(form.formUrl, entries);
+
+  if (success) {
+    addHistory(formId, form.label);
+    showToast(`✅ 「${form.label}」を提出しました！`, 'success');
+    renderFormList();
+  } else {
+    showToast('送信に失敗しました。「入力済みで開く」をお試しください', 'error');
+    if (submitBtn) {
+      submitBtn.textContent = '🚀 ワンクリック提出';
+      submitBtn.disabled = false;
+    }
+  }
 }
+
 /**
  * 事前入力済みURLで新しいタブを開く（フォールバック）
  */
@@ -316,128 +196,11 @@ function handleOpenPrefilled(formId) {
 
   // 履歴に記録（実際にはユーザーが送信ボタンを押すまで未提出だが便宜上記録）
   addHistory(formId, form.label);
-  renderTimetable();
+  renderFormList();
   showToast(`「${form.label}」を入力済みで開きました`, 'info');
 }
 
 // ── フォームの追加・編集・削除 ──
-
-/**
- * ブックマークレットからコピーしたJSONデータを適用する
- */
-function handleApplyBookmarkData() {
-  const input = document.getElementById('input-bookmark-data');
-  const status = document.getElementById('auto-parse-status');
-  const raw = input.value.trim();
-
-  if (!raw) {
-    status.innerHTML = '<span class="status-error">データを貼り付けてください</span>';
-    return;
-  }
-
-  try {
-    const data = JSON.parse(raw);
-
-    if (!data.entries || data.entries.length === 0) {
-      status.innerHTML = '<span class="status-error">❌ フィールド情報が含まれていません</span>';
-      return;
-    }
-
-    // フォームURLを自動入力
-    if (data.url) {
-      const viewUrl = data.url.split('?')[0];
-      document.getElementById('input-form-url').value = viewUrl;
-    }
-
-    // ラベルにフォームタイトルを自動入力
-    const labelInput = document.getElementById('input-form-label');
-    if (!labelInput.value && data.title) {
-      labelInput.value = data.title;
-    }
-
-    // フィールド行をクリアして自動入力
-    const container = document.getElementById('field-rows');
-    container.innerHTML = '';
-    data.entries.forEach(entry => {
-      addFieldRow(entry.fieldName || 'フィールド', entry.entryId, '');
-    });
-
-    status.innerHTML = `<span class="status-success">✅ ${data.entries.length}個のフィールドを設定しました！</span>`;
-    showToast(`${data.entries.length}個のフィールドを自動設定しました`, 'success');
-
-    if (!labelInput.value) labelInput.focus();
-  } catch (e) {
-    status.innerHTML = '<span class="status-error">❌ データの形式が正しくありません。ブックマークレットで取得したデータを貼り付けてください</span>';
-  }
-}
-
-/**
- * GoogleフォームURLからフィールド情報を自動取得する
- */
-async function handleAutoFetch() {
-  const input = document.getElementById('input-auto-url');
-  const status = document.getElementById('auto-parse-status');
-  const url = input.value.trim();
-
-  if (!url) {
-    status.innerHTML = '<span class="status-error">URLを貼り付けてください</span>';
-    return;
-  }
-
-  if (!url.includes('docs.google.com/forms')) {
-    status.innerHTML = '<span class="status-error">❌ GoogleフォームのURLではないようです</span>';
-    return;
-  }
-
-  status.innerHTML = '<span class="status-loading">⏳ フォーム情報を取得中...</span>';
-  document.getElementById('btn-auto-fetch').disabled = true;
-
-  const result = await fetchFormFields(url);
-
-  if (result && result.entries.length > 0) {
-    const viewUrl = url.split('?')[0].replace(/\/(edit|formResponse)\s*$/, '/viewform');
-    document.getElementById('input-form-url').value = viewUrl.includes('/viewform') ? viewUrl : viewUrl + '/viewform';
-
-    const labelInput = document.getElementById('input-form-label');
-    if (!labelInput.value && result.title) {
-      labelInput.value = result.title;
-    }
-
-    const container = document.getElementById('field-rows');
-    container.innerHTML = '';
-    result.entries.forEach(entry => {
-      addFieldRow(entry.fieldName, entry.entryId, '');
-    });
-
-    status.innerHTML = `<span class="status-success">✅ ${result.entries.length}個のフィールドを自動検出しました！</span>`;
-    showToast(`${result.entries.length}個のフィールドを自動取得しました`, 'success');
-
-    document.getElementById('btn-auto-fetch').disabled = false;
-    if (!labelInput.value) labelInput.focus();
-    return;
-  }
-
-  const prefilledResult = parsePrefilledUrl(url);
-  if (prefilledResult && prefilledResult.entries.length > 0) {
-    document.getElementById('input-form-url').value = prefilledResult.formUrl;
-
-    const container = document.getElementById('field-rows');
-    container.innerHTML = '';
-    prefilledResult.entries.forEach(entry => {
-      addFieldRow(entry.fieldName, entry.entryId, entry.value);
-    });
-
-    status.innerHTML = `<span class="status-success">✅ ${prefilledResult.entries.length}個のフィールドを検出しました（事前入力リンクから）</span>`;
-    showToast(`${prefilledResult.entries.length}個のフィールドを設定しました`, 'success');
-
-    document.getElementById('btn-auto-fetch').disabled = false;
-    document.getElementById('input-form-label').focus();
-    return;
-  }
-
-  status.innerHTML = '<span class="status-error">❌ フィールドを自動取得できませんでした。フォームが非公開の可能性があります。手動で入力してください</span>';
-  document.getElementById('btn-auto-fetch').disabled = false;
-}
 
 /** フォーム追加/編集エリアの表示切替 */
 function toggleFormEditor(show) {
@@ -452,14 +215,8 @@ function toggleFormEditor(show) {
 
 /** フォームエディタをリセット */
 function resetFormEditor() {
-  document.getElementById('input-auto-url').value = '';
-  document.getElementById('input-bookmark-data').value = '';
-  document.getElementById('auto-parse-status').innerHTML = '';
   document.getElementById('input-form-url').value = '';
   document.getElementById('input-form-label').value = '';
-  document.getElementById('select-day').value = 'other';
-  document.getElementById('select-start-period').value = '0';
-  document.getElementById('select-end-period').value = '0';
   document.getElementById('field-rows').innerHTML = '';
   addFieldRow(); // デフォルトで1行追加
   document.getElementById('btn-register-form').textContent = '📌 登録';
@@ -493,8 +250,7 @@ function handleRegisterForm() {
     showToast('ラベルを入力してください', 'error');
     return;
   }
-  const formId = parseFormUrl(formUrl);
-  if (!formId) {
+  if (!parseFormUrl(formUrl)) {
     showToast('有効なGoogleフォームURLを入力してください', 'error');
     return;
   }
@@ -511,8 +267,7 @@ function handleRegisterForm() {
 
     if (fieldName && entryId) {
       // entryIdが "entry." で始まっていなければ自動補完
-      const normalizedEntryId = entryId.startsWith('entry.') ? entryId : 'entry.' + entryId;
-      entries.push({ fieldName, entryId: normalizedEntryId, value });
+      // ただし、emailAddress の場合はそのままにする
       hasValidField = true;
     }
   });
@@ -522,30 +277,18 @@ function handleRegisterForm() {
     return;
   }
 
-  const dayOfWeek = document.getElementById('select-day').value;
-  const startPeriod = parseInt(document.getElementById('select-start-period').value, 10);
-  const endPeriod = parseInt(document.getElementById('select-end-period').value, 10);
-
-  // 開始と終了が逆転している場合は修正
-  const finalStart = startPeriod;
-  const finalEnd = (endPeriod > 0 && endPeriod < startPeriod) ? startPeriod : (endPeriod || startPeriod);
-
   // 保存
   const formData = {
-    id: editingFormId || undefined,
+    id: editingFormId,
     label,
     formUrl,
-    formId,
-    entries,
-    dayOfWeek,
-    startPeriod: finalStart,
-    endPeriod: finalEnd,
-    period: finalStart // 互換性のため
+    formId: parseFormUrl(formUrl),
+    entries
   };
 
   saveForm(formData);
   toggleFormEditor(false);
-  renderTimetable();
+  renderFormList();
 
   const action = editingFormId ? '更新' : '登録';
   showToast(`「${label}」を${action}しました`, 'success');
@@ -561,9 +304,6 @@ function handleEditForm(formId) {
 
   document.getElementById('input-form-url').value = form.formUrl;
   document.getElementById('input-form-label').value = form.label;
-  document.getElementById('select-day').value = form.dayOfWeek || 'other';
-  document.getElementById('select-start-period').value = form.startPeriod || form.period || '0';
-  document.getElementById('select-end-period').value = form.endPeriod || form.period || '0';
 
   // フィールド行をクリアして再構築
   const container = document.getElementById('field-rows');
@@ -581,7 +321,7 @@ function handleDeleteForm(formId) {
 
   if (confirm(`「${form.label}」を削除しますか？`)) {
     removeForm(formId);
-    renderTimetable();
+    renderFormList();
     showToast(`「${form.label}」を削除しました`, 'info');
   }
 }
@@ -673,3 +413,4 @@ function formatDate(isoString) {
   const min = String(d.getMinutes()).padStart(2, '0');
   return `${month}/${day} ${hour}:${min}`;
 }
+
